@@ -3,6 +3,7 @@ var requestModule = require('request');
 var jar = requestModule.jar();
 
 var request      = requestModule.defaults({jar: jar}), // Cookies should be enabled
+    urlp = require('url'),
     UserAgent    = 'Ubuntu Chromium/34.0.1847.116 Chrome/34.0.1847.116 Safari/537.36',
     Timeout      = 6000, // Cloudflare requires a delay of 5 seconds, so wait for at least 6.
     cloudscraper = {};
@@ -137,11 +138,18 @@ function checkForErrors(error, body) {
 
 function solveChallenge(response, body, options, callback) {
   var challenge = body.match(/name="jschl_vc" value="(\w+)"/),
-      host = response.request.host,
+      host = null,
       makeRequest = requestMethod(options.method),
       jsChlVc,
       answerResponse,
       answerUrl;
+
+  var pr = urlp.parse(response.request.href);
+  if (pr != null && pr.hostname != null) {
+     host = pr.hostname;
+  } else {
+      host = response.request.host;
+  }
 
   if (!challenge) {
     return callback({errorType: 3, error: 'I cant extract challengeId (jschl_vc) from page'}, body, response);
@@ -167,7 +175,7 @@ function solveChallenge(response, body, options, callback) {
   try {
     answerResponse = {
       'jschl_vc': jsChlVc,
-      'jschl_answer': (eval(challenge) + response.request.host.length),
+      'jschl_answer': (eval(challenge) + host.length),
       'pass': challenge_pass
     };
   } catch (err) {
